@@ -39,7 +39,7 @@ JSON-RPC، لتحليل التزام العملاء بالسداد، مطابق�
 ```bash
 npm install
 cp .env.example .env   # عدّل بيانات Odoo إن توفرت، وإلا اتركها لاستخدام البيانات التجريبية
-npm run seed:admin     # ينشئ أول مستخدم لتسجيل الدخول (admin / admin افتراضيًا)
+npm run seed:admin     # ينشئ أول مستخدم لتسجيل الدخول (admin / 123 افتراضيًا)
 npm run dev
 ```
 
