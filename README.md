@@ -1,27 +1,54 @@
-# Northfield & Co.
+# نظام المطابقات والتحصيل وتحليل العملاء
 
-A small e-commerce storefront built with Next.js (App Router), TypeScript, and Tailwind CSS.
+تطبيق Next.js (App Router) + TypeScript + Tailwind، متصل ببيانات Odoo عبر
+JSON-RPC، لتحليل التزام العملاء بالسداد، مطابقة الفواتير مع الدفعات، وإدارة
+عمليات التحصيل.
 
-## Features
+## الموديولات
 
-- Product catalog with category and pricing
-- Product detail pages (statically generated per product)
-- Cart with quantity editing, persisted to `localStorage`
-- Demo checkout flow with an order summary and success page
+- **تحليل العملاء** (`/customers`) — كشف حساب لكل عميل، مؤشر الالتزام،
+  أعمار الديون، رسم بياني للمبيعات والتحصيل الشهري، وتوصيات آلية.
+- **المطابقات** (`/reconciliation`) — اقتراح مطابقات بين الفواتير الصادرة
+  والدفعات المستلمة، مع نموذج مصادقة (تأكيد/رفض + ملاحظات) وسجل تاريخي.
+- **التحصيل** (`/collections`) — قائمة تحصيل مرتبة حسب المديونية المتأخرة،
+  جدولة مواعيد، وتسجيل الاتصالات/الاستدعاءات ونتائجها.
 
-## Getting started
+## مصادر البيانات
+
+- **Odoo (مصدر الحقيقة المالي)**: `res.partner`, `account.move`,
+  `account.payment` عبر `src/lib/odoo.ts`. اضبط في `.env`:
+
+  ```
+  ODOO_URL=https://your-company.odoo.com
+  ODOO_DB=your-db-name
+  ODOO_USERNAME=api-user@example.com
+  ODOO_API_KEY=your-odoo-api-key
+  ```
+
+  بدون هذه المتغيرات، يعمل التطبيق تلقائيًا على بيانات تجريبية
+  (`src/lib/odoo-demo-data.ts`) بنفس شكل بيانات Odoo، حتى يبقى قابلاً
+  للتجربة دون اتصال حقيقي.
+
+- **قاعدة بيانات محلية (SQLite عبر better-sqlite3)**: تخزّن حالة الموديولات
+  الخاصة بالتطبيق نفسه (غير موجودة في Odoo): تسجيلات المصادقة على
+  المطابقات، مواعيد التحصيل، سجل الاتصالات، والمستخدمين/الجلسات. الملف في
+  `data/app.db` (مستثنى من git).
+
+## التشغيل
 
 ```bash
 npm install
+cp .env.example .env   # عدّل بيانات Odoo إن توفرت، وإلا اتركها لاستخدام البيانات التجريبية
+npm run seed:admin     # ينشئ أول مستخدم لتسجيل الدخول (admin@example.com / ChangeMe123! افتراضيًا)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+افتح [http://localhost:3000](http://localhost:3000) — سيتم توجيهك لصفحة
+تسجيل الدخول ثم إلى موديول تحليل العملاء.
 
-## Notes
+## ملاحظات
 
-- Checkout is a UI demo only — no payment provider is integrated and no data is
-  sent anywhere. Wire up a real payment provider (e.g. Stripe) in
-  `src/app/checkout/page.tsx` before using this in production.
-- Product data lives in `src/lib/products.ts`; replace with a real data
-  source (CMS, database, or commerce API) as needed.
+- المصادقة حاليًا بسيطة (جلسة عبر كوكي + كلمة مرور مشفّرة بـ scrypt) لأغراض
+  الاستخدام الداخلي؛ عدّل `src/lib/auth.ts` إذا احتجت تكامل SSO لاحقًا.
+- خوارزمية اقتراح المطابقات في `src/lib/reconciliation-repo.ts` مبدئية
+  (تطابق زمني وتقارب في المبلغ) وتحتاج ضبطًا حسب سياسة المطابقة الفعلية لديكم.
