@@ -1,11 +1,31 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+/**
+ * Vercel's serverless functions have a read-only filesystem outside of
+ * /tmp, and /tmp itself is ephemeral (wiped between deployments, and not
+ * shared across function instances). This picks a writable directory so
+ * the app doesn't crash there, but on Vercel the data in reconciliations/
+ * appointments/call_logs will NOT persist reliably — swap this for a real
+ * hosted database (Postgres, Turso, etc.) before relying on it in
+ * production.
+ */
+function resolveDataDir(): string {
+  const preferred = path.join(process.cwd(), "data");
+  try {
+    fs.mkdirSync(preferred, { recursive: true });
+    fs.accessSync(preferred, fs.constants.W_OK);
+    return preferred;
+  } catch {
+    const fallback = path.join(os.tmpdir(), "crrm-data");
+    fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+}
 
-const DB_PATH = path.join(DATA_DIR, "app.db");
+const DB_PATH = path.join(resolveDataDir(), "app.db");
 
 declare global {
   var __db: Database.Database | undefined;
@@ -15,22 +35,6 @@ function createDb(): Database.Database {
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
   db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'agent',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      expires_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS reconciliations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       partner_id INTEGER NOT NULL,
