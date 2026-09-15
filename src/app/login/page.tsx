@@ -41,9 +41,9 @@ export default function LoginPage() {
         <h1 className="mb-1 text-xl font-semibold">تسجيل الدخول</h1>
         <p className="mb-6 text-sm text-zinc-500">نظام المطابقات والتحصيل وتحليل بيانات العملاء</p>
 
-        <label className="mb-1 block text-sm font-medium">البريد الإلكتروني</label>
+        <label className="mb-1 block text-sm font-medium">اسم المستخدم</label>
         <input
-          type="email"
+          type="text"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}

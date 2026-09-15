@@ -18,8 +18,8 @@ db.exec(`
   );
 `);
 
-const email = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
-const password = process.env.SEED_ADMIN_PASSWORD || "ChangeMe123!";
+const email = process.env.SEED_ADMIN_EMAIL || "admin";
+const password = process.env.SEED_ADMIN_PASSWORD || "admin";
 const name = process.env.SEED_ADMIN_NAME || "Administrator";
 
 const salt = randomBytes(16).toString("hex");
