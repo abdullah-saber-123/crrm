@@ -1,11 +1,18 @@
 import Link from "next/link";
-import { listPartners, getPartnerInvoices, getPartnerPayments } from "@/lib/customers-repo";
-import { analyzeCustomer } from "@/lib/customer-analytics";
-import { listAppointments, listCallLogs } from "@/lib/collections-repo";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { listPartners } from "@/lib/customers-repo";
+import {
+  listShows,
+  getShow,
+  listNominations,
+  getNominationCounts,
+  listRegistrations,
+  listAppointments,
+} from "@/lib/collections-repo";
+import { formatDate } from "@/lib/format";
+import CreateShowForm from "@/components/CreateShowForm";
+import NominationActions from "@/components/NominationActions";
 import ScheduleAppointmentForm from "@/components/ScheduleAppointmentForm";
 import AppointmentStatusButtons from "@/components/AppointmentStatusButtons";
-import CallLogForm from "@/components/CallLogForm";
 
 export const dynamic = "force-dynamic";
 
@@ -24,87 +31,113 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function CollectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ partner?: string }>;
+  searchParams: Promise<{ show?: string; partner?: string }>;
 }) {
-  const { partner: partnerParam } = await searchParams;
-  const defaultPartnerId = partnerParam ? Number(partnerParam) : undefined;
+  const { show: showParam, partner: partnerParam } = await searchParams;
 
-  const partners = await listPartners();
-  const queue = (
-    await Promise.all(
-      partners.map(async (partner) => {
-        const [invoices, payments] = await Promise.all([
-          getPartnerInvoices(partner.id),
-          getPartnerPayments(partner.id),
-        ]);
-        return { partner, analysis: analyzeCustomer(invoices, payments) };
-      })
-    )
-  )
-    .filter(({ analysis }) => analysis.overdueDebt > 0)
-    .sort((a, b) => b.analysis.overdueDebt - a.analysis.overdueDebt);
+  const [shows, partners] = await Promise.all([listShows(), listPartners()]);
+  const selectedShowId = showParam ? Number(showParam) : shows[0]?.id;
+  const selectedShow = selectedShowId ? getShow(selectedShowId) : undefined;
+
+  const nominationCounts = selectedShowId ? getNominationCounts(selectedShowId) : new Map<number, number>();
+  const registrations = selectedShowId ? listRegistrations(selectedShowId) : [];
+  const registeredPartnerIds = new Set(registrations.map((r) => r.partnerId));
+  const nominations = selectedShowId ? listNominations(selectedShowId) : [];
 
   const appointments = listAppointments();
-  const callLogs = listCallLogs();
+  const defaultPartnerId = partnerParam ? Number(partnerParam) : undefined;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-10">
-      <h1 className="mb-1 text-2xl font-semibold">التحصيل</h1>
+      <h1 className="mb-1 text-2xl font-semibold">عرض الكولكشن والترشيح</h1>
       <p className="mb-8 text-sm text-zinc-500">
-        قائمة العملاء المستهدفين بالتحصيل، جدولة مواعيد المتابعة، وتسجيل الاتصالات والاستدعاءات.
+        القائمة الكاملة للعملاء متاحة للجميع لترشيح من يرونه مناسبًا لحضور عرض الكولكشن، مع عدد مرات الترشيح وتسجيل الحضور.
       </p>
 
-      <section className="mb-10">
-        <h2 className="mb-4 text-lg font-semibold">قائمة التحصيل (مرتبة حسب المتأخر)</h2>
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-zinc-100 text-right dark:bg-zinc-900">
-              <tr>
-                <th className="px-4 py-3 font-medium">العميل</th>
-                <th className="px-4 py-3 font-medium">المتأخر</th>
-                <th className="px-4 py-3 font-medium">مؤشر الالتزام</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map(({ partner, analysis }) => (
-                <tr key={partner.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3">
-                    <Link href={`/customers/${partner.id}`} className="font-medium hover:underline">
-                      {partner.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{formatCurrency(analysis.overdueDebt)}</td>
-                  <td className="px-4 py-3">{analysis.commitmentScore}/100</td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/collections?partner=${partner.id}#schedule`}
-                      className="text-xs font-medium text-zinc-500 hover:underline"
-                    >
-                      جدولة موعد ↑
-                    </Link>
-                  </td>
-                </tr>
+      <section className="mb-6 flex flex-wrap items-center gap-3">
+        <form method="GET" className="flex items-end gap-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-zinc-500">العرض الحالي</label>
+            <select name="show" defaultValue={selectedShowId} className="input">
+              {shows.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {s.eventDate ? `— ${formatDate(s.eventDate)}` : ""}
+                </option>
               ))}
-              {queue.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-zinc-500">
-                    لا يوجد عملاء لديهم مديونية متأخرة حاليًا.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </select>
+          </div>
+          <button type="submit" className="rounded-lg border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700">
+            عرض
+          </button>
+        </form>
+        <CreateShowForm />
       </section>
 
-      <div id="schedule" className="mb-10 grid gap-6 lg:grid-cols-2">
+      {!selectedShow ? (
+        <p className="rounded-xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800">
+          لا يوجد أي عرض كولكشن بعد — أنشئ واحدًا للبدء بالترشيح.
+        </p>
+      ) : (
+        <section className="mb-10">
+          <h2 className="mb-4 text-lg font-semibold">
+            قائمة العملاء — {selectedShow.name}
+          </h2>
+          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-zinc-100 text-right dark:bg-zinc-900">
+                <tr>
+                  <th className="px-4 py-3 font-medium">العميل</th>
+                  <th className="px-4 py-3 font-medium">عدد مرات الترشيح</th>
+                  <th className="px-4 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {partners.map((partner) => (
+                  <tr key={partner.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                    <td className="px-4 py-3">
+                      <Link href={`/customers/${partner.id}`} className="font-medium hover:underline">
+                        {partner.name}
+                      </Link>
+                      <div className="text-xs text-zinc-500">{partner.city}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium dark:bg-zinc-900">
+                        {nominationCounts.get(partner.id) ?? 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <NominationActions
+                        showId={selectedShow.id}
+                        partnerId={partner.id}
+                        partnerName={partner.name}
+                        isRegistered={registeredPartnerIds.has(partner.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="mb-3 mt-6 text-sm font-semibold text-zinc-500">آخر الترشيحات</h3>
+          <ul className="flex flex-col gap-2 text-sm">
+            {nominations.slice(0, 10).map((n) => (
+              <li key={n.id} className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-900">
+                <span className="font-medium">{n.partnerName}</span> — رشّحه {n.nominatedBy || "—"}
+                {n.notes ? ` · ${n.notes}` : ""}
+              </li>
+            ))}
+            {nominations.length === 0 && <li className="text-zinc-500">لا توجد ترشيحات بعد.</li>}
+          </ul>
+        </section>
+      )}
+
+      <div id="schedule" className="mb-10">
         <ScheduleAppointmentForm partners={partners} defaultPartnerId={defaultPartnerId} />
-        <CallLogForm partners={partners} appointments={appointments} defaultPartnerId={defaultPartnerId} />
       </div>
 
-      <section className="mb-10">
-        <h2 className="mb-4 text-lg font-semibold">مواعيد التحصيل</h2>
+      <section>
+        <h2 className="mb-4 text-lg font-semibold">مواعيد الحضور</h2>
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-zinc-100 text-right dark:bg-zinc-900">
@@ -136,41 +169,6 @@ export default async function CollectionsPage({
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-zinc-500">
                     لا توجد مواعيد مجدولة بعد.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-lg font-semibold">سجل الاتصالات</h2>
-        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-zinc-100 text-right dark:bg-zinc-900">
-              <tr>
-                <th className="px-4 py-3 font-medium">العميل</th>
-                <th className="px-4 py-3 font-medium">التاريخ</th>
-                <th className="px-4 py-3 font-medium">النتيجة</th>
-                <th className="px-4 py-3 font-medium">ملاحظات</th>
-                <th className="px-4 py-3 font-medium">بواسطة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {callLogs.map((c) => (
-                <tr key={c.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3">{c.partnerName}</td>
-                  <td className="px-4 py-3">{formatDate(c.callDate)}</td>
-                  <td className="px-4 py-3">{c.outcome}</td>
-                  <td className="px-4 py-3 text-zinc-500">{c.notes || "—"}</td>
-                  <td className="px-4 py-3">{c.createdBy ?? "—"}</td>
-                </tr>
-              ))}
-              {callLogs.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-zinc-500">
-                    لا يوجد سجل اتصالات بعد.
                   </td>
                 </tr>
               )}

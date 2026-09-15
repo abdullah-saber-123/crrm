@@ -1,26 +1,24 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { createCallLog } from "@/lib/collections-repo";
+import { registerCustomer } from "@/lib/collections-repo";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   const body = await request.json();
-  const { partnerId, partnerName, appointmentId, outcome, notes } = body;
+  const { showId, partnerId, partnerName } = body;
 
-  if (typeof partnerId !== "number" || !partnerName || !outcome) {
+  if (typeof showId !== "number" || typeof partnerId !== "number" || !partnerName) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const call = createCallLog({
+  const registration = registerCustomer({
+    showId,
     partnerId,
     partnerName,
-    appointmentId: typeof appointmentId === "number" ? appointmentId : null,
-    outcome,
-    notes: notes || null,
-    createdBy: user.name,
+    registeredBy: user.name,
   });
 
-  return NextResponse.json({ call });
+  return NextResponse.json({ registration });
 }

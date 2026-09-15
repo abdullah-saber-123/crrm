@@ -1,18 +1,14 @@
 import { getDb } from "@/lib/db";
-import { listAllOpenInvoices, listAllPayments, listPartners, type Invoice, type Payment } from "@/lib/customers-repo";
+import { getPartnerInvoices, getPartnerPayments } from "@/lib/customers-repo";
 
-export type ReconciliationRecord = {
+export type AccountReconciliation = {
   id: number;
   partnerId: number;
   partnerName: string;
-  invoiceRef: string | null;
-  invoiceMoveId: number | null;
-  invoiceAmount: number | null;
-  paymentRef: string | null;
-  paymentId: number | null;
-  paymentAmount: number | null;
-  matchedAmount: number;
-  reconciliationDate: string;
+  asOfDate: string;
+  balance: number;
+  totalInvoiced: number;
+  totalPaid: number;
   status: "pending" | "confirmed" | "rejected";
   confirmedBy: string | null;
   confirmedAt: string | null;
@@ -20,30 +16,26 @@ export type ReconciliationRecord = {
   createdAt: string;
 };
 
-export type ReconciliationCandidate = {
-  key: string;
+export type AccountBalanceAsOf = {
   partnerId: number;
-  partnerName: string;
-  invoice: Invoice;
-  payment: Payment;
-  matchedAmount: number;
-  existing: ReconciliationRecord | null;
+  asOfDate: string;
+  totalInvoiced: number;
+  totalPaid: number;
+  balance: number;
+  invoiceCount: number;
+  paymentCount: number;
 };
 
-function rowToRecord(row: Record<string, unknown>): ReconciliationRecord {
+function rowToRecord(row: Record<string, unknown>): AccountReconciliation {
   return {
     id: row.id as number,
     partnerId: row.partner_id as number,
     partnerName: row.partner_name as string,
-    invoiceRef: row.invoice_ref as string | null,
-    invoiceMoveId: row.invoice_move_id as number | null,
-    invoiceAmount: row.invoice_amount as number | null,
-    paymentRef: row.payment_ref as string | null,
-    paymentId: row.payment_id as number | null,
-    paymentAmount: row.payment_amount as number | null,
-    matchedAmount: row.matched_amount as number,
-    reconciliationDate: row.reconciliation_date as string,
-    status: row.status as ReconciliationRecord["status"],
+    asOfDate: row.as_of_date as string,
+    balance: row.balance as number,
+    totalInvoiced: row.total_invoiced as number,
+    totalPaid: row.total_paid as number,
+    status: row.status as AccountReconciliation["status"],
     confirmedBy: row.confirmed_by as string | null,
     confirmedAt: row.confirmed_at as string | null,
     notes: row.notes as string | null,
@@ -51,122 +43,74 @@ function rowToRecord(row: Record<string, unknown>): ReconciliationRecord {
   };
 }
 
-export function listReconciliationRecords(): ReconciliationRecord[] {
-  const rows = getDb()
-    .prepare("SELECT * FROM reconciliations ORDER BY created_at DESC")
-    .all() as Record<string, unknown>[];
+/**
+ * Computes the customer's account balance as of a given date: total
+ * invoiced up to that date minus total collected up to that date. This is
+ * what account-level reconciliation confirms — not individual invoice ↔
+ * payment pairs.
+ */
+export async function computeAccountBalanceAsOf(
+  partnerId: number,
+  asOfDate: string
+): Promise<AccountBalanceAsOf> {
+  const cutoff = new Date(asOfDate);
+  const [invoices, payments] = await Promise.all([
+    getPartnerInvoices(partnerId),
+    getPartnerPayments(partnerId),
+  ]);
+
+  const invoicesToDate = invoices.filter((inv) => new Date(inv.invoiceDate) <= cutoff);
+  const paymentsToDate = payments.filter((p) => new Date(p.paymentDate) <= cutoff);
+
+  const totalInvoiced = invoicesToDate.reduce((sum, inv) => sum + inv.amountTotal, 0);
+  const totalPaid = paymentsToDate.reduce((sum, p) => sum + p.amount, 0);
+
+  return {
+    partnerId,
+    asOfDate,
+    totalInvoiced,
+    totalPaid,
+    balance: totalInvoiced - totalPaid,
+    invoiceCount: invoicesToDate.length,
+    paymentCount: paymentsToDate.length,
+  };
+}
+
+export function listAccountReconciliations(partnerId?: number): AccountReconciliation[] {
+  const rows = partnerId
+    ? (getDb()
+        .prepare("SELECT * FROM account_reconciliations WHERE partner_id = ? ORDER BY created_at DESC")
+        .all(partnerId) as Record<string, unknown>[])
+    : (getDb()
+        .prepare("SELECT * FROM account_reconciliations ORDER BY created_at DESC")
+        .all() as Record<string, unknown>[]);
   return rows.map(rowToRecord);
 }
 
-export function getReconciliationRecord(id: number): ReconciliationRecord | undefined {
-  const row = getDb().prepare("SELECT * FROM reconciliations WHERE id = ?").get(id) as
-    | Record<string, unknown>
-    | undefined;
-  return row ? rowToRecord(row) : undefined;
-}
-
-function findExistingRecord(invoiceMoveId: number, paymentId: number): ReconciliationRecord | null {
-  const row = getDb()
-    .prepare(
-      "SELECT * FROM reconciliations WHERE invoice_move_id = ? AND payment_id = ? ORDER BY created_at DESC LIMIT 1"
-    )
-    .get(invoiceMoveId, paymentId) as Record<string, unknown> | undefined;
-  return row ? rowToRecord(row) : null;
-}
-
-/**
- * Proposes invoice <-> payment matches per customer using a simple
- * chronological, amount-proximity heuristic. This is a suggestion for a
- * human to review and confirm (المصادقة) — it does not touch Odoo.
- */
-export async function proposeReconciliationCandidates(): Promise<ReconciliationCandidate[]> {
-  const [partners, invoices, payments] = await Promise.all([
-    listPartners(),
-    listAllOpenInvoices(),
-    listAllPayments(),
-  ]);
-  const partnerNames = new Map(partners.map((p) => [p.id, p.name]));
-
-  const byPartner = new Map<number, { invoices: Invoice[]; payments: Payment[] }>();
-  for (const inv of invoices) {
-    if (!byPartner.has(inv.partnerId)) byPartner.set(inv.partnerId, { invoices: [], payments: [] });
-    byPartner.get(inv.partnerId)!.invoices.push(inv);
-  }
-  for (const p of payments) {
-    if (!byPartner.has(p.partnerId)) byPartner.set(p.partnerId, { invoices: [], payments: [] });
-    byPartner.get(p.partnerId)!.payments.push(p);
-  }
-
-  const candidates: ReconciliationCandidate[] = [];
-
-  for (const [partnerId, group] of byPartner) {
-    const sortedInvoices = [...group.invoices].sort(
-      (a, b) => new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime()
-    );
-    const usedPayments = new Set<number>();
-
-    for (const invoice of sortedInvoices) {
-      const candidatePayments = group.payments
-        .filter((p) => !usedPayments.has(p.id))
-        .filter((p) => new Date(p.paymentDate) >= new Date(invoice.invoiceDate))
-        .sort(
-          (a, b) =>
-            Math.abs(a.amount - invoice.amountResidual) - Math.abs(b.amount - invoice.amountResidual)
-        );
-
-      const bestMatch = candidatePayments[0];
-      if (!bestMatch) continue;
-
-      usedPayments.add(bestMatch.id);
-      const matchedAmount = Math.min(bestMatch.amount, invoice.amountTotal);
-
-      candidates.push({
-        key: `${invoice.id}-${bestMatch.id}`,
-        partnerId,
-        partnerName: partnerNames.get(partnerId) ?? `#${partnerId}`,
-        invoice,
-        payment: bestMatch,
-        matchedAmount,
-        existing: findExistingRecord(invoice.id, bestMatch.id),
-      });
-    }
-  }
-
-  return candidates.sort(
-    (a, b) => new Date(b.payment.paymentDate).getTime() - new Date(a.payment.paymentDate).getTime()
-  );
-}
-
-export function confirmReconciliation(input: {
+export function confirmAccountReconciliation(input: {
   partnerId: number;
   partnerName: string;
-  invoiceRef: string;
-  invoiceMoveId: number;
-  invoiceAmount: number;
-  paymentRef: string;
-  paymentId: number;
-  paymentAmount: number;
-  matchedAmount: number;
+  asOfDate: string;
+  balance: number;
+  totalInvoiced: number;
+  totalPaid: number;
   status: "confirmed" | "rejected";
   confirmedBy: string;
   notes: string | null;
-}): ReconciliationRecord {
+}): AccountReconciliation {
   const now = new Date().toISOString();
   const result = getDb()
     .prepare(
-      `INSERT INTO reconciliations
-        (partner_id, partner_name, invoice_ref, invoice_move_id, invoice_amount,
-         payment_ref, payment_id, payment_amount, matched_amount,
-         reconciliation_date, status, confirmed_by, confirmed_at, notes)
-       VALUES (@partnerId, @partnerName, @invoiceRef, @invoiceMoveId, @invoiceAmount,
-               @paymentRef, @paymentId, @paymentAmount, @matchedAmount,
-               @reconciliationDate, @status, @confirmedBy, @confirmedAt, @notes)`
+      `INSERT INTO account_reconciliations
+        (partner_id, partner_name, as_of_date, balance, total_invoiced, total_paid,
+         status, confirmed_by, confirmed_at, notes)
+       VALUES (@partnerId, @partnerName, @asOfDate, @balance, @totalInvoiced, @totalPaid,
+               @status, @confirmedBy, @confirmedAt, @notes)`
     )
-    .run({
-      ...input,
-      reconciliationDate: now.slice(0, 10),
-      confirmedAt: now,
-    });
+    .run({ ...input, confirmedAt: now });
 
-  return getReconciliationRecord(Number(result.lastInsertRowid))!;
+  const row = getDb()
+    .prepare("SELECT * FROM account_reconciliations WHERE id = ?")
+    .get(result.lastInsertRowid) as Record<string, unknown>;
+  return rowToRecord(row);
 }
