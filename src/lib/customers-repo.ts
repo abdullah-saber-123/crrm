@@ -14,6 +14,7 @@ export type Partner = {
   email: string;
   phone: string;
   city: string;
+  creditLimit: number;
 };
 
 export type Invoice = {
@@ -38,28 +39,50 @@ export type Payment = {
 
 export const usingLiveOdoo = isOdooConfigured();
 
+type OdooPartner = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  credit_limit: number;
+};
+
+function mapOdooPartner(r: OdooPartner): Partner {
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    city: r.city,
+    creditLimit: r.credit_limit,
+  };
+}
+
 export async function listPartners(): Promise<Partner[]> {
   if (usingLiveOdoo) {
-    return searchRead<Partner>(
+    const rows = await searchRead<OdooPartner>(
       "res.partner",
       [["customer_rank", ">", 0]],
-      ["id", "name", "email", "phone", "city"],
+      ["id", "name", "email", "phone", "city", "credit_limit"],
       { limit: 200, order: "name asc" }
     );
+    return rows.map(mapOdooPartner);
   }
-  return getDemoPartners();
+  return getDemoPartners().map(mapOdooPartner);
 }
 
 export async function getPartner(id: number): Promise<Partner | undefined> {
   if (usingLiveOdoo) {
-    const rows = await searchRead<Partner>(
+    const rows = await searchRead<OdooPartner>(
       "res.partner",
       [["id", "=", id]],
-      ["id", "name", "email", "phone", "city"]
+      ["id", "name", "email", "phone", "city", "credit_limit"]
     );
-    return rows[0];
+    return rows[0] ? mapOdooPartner(rows[0]) : undefined;
   }
-  return getDemoPartner(id);
+  const demo = getDemoPartner(id);
+  return demo ? mapOdooPartner(demo) : undefined;
 }
 
 export async function getPartnerInvoices(partnerId: number): Promise<Invoice[]> {

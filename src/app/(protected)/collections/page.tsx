@@ -1,16 +1,9 @@
 import Link from "next/link";
+import { ArrowLeft, Users2 } from "lucide-react";
 import { listPartners } from "@/lib/customers-repo";
-import {
-  listShows,
-  getShow,
-  listNominations,
-  getNominationCounts,
-  listRegistrations,
-  listAppointments,
-} from "@/lib/collections-repo";
+import { listShows, getNominationCounts, listAppointments } from "@/lib/collections-repo";
 import { formatDate } from "@/lib/format";
 import CreateShowForm from "@/components/CreateShowForm";
-import NominationActions from "@/components/NominationActions";
 import ScheduleAppointmentForm from "@/components/ScheduleAppointmentForm";
 import AppointmentStatusButtons from "@/components/AppointmentStatusButtons";
 
@@ -31,105 +24,63 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function CollectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ show?: string; partner?: string }>;
+  searchParams: Promise<{ partner?: string }>;
 }) {
-  const { show: showParam, partner: partnerParam } = await searchParams;
-
+  const { partner: partnerParam } = await searchParams;
   const [shows, partners] = await Promise.all([listShows(), listPartners()]);
-  const selectedShowId = showParam ? Number(showParam) : shows[0]?.id;
-  const selectedShow = selectedShowId ? getShow(selectedShowId) : undefined;
-
-  const nominationCounts = selectedShowId ? getNominationCounts(selectedShowId) : new Map<number, number>();
-  const registrations = selectedShowId ? listRegistrations(selectedShowId) : [];
-  const registeredPartnerIds = new Set(registrations.map((r) => r.partnerId));
-  const nominations = selectedShowId ? listNominations(selectedShowId) : [];
-
   const appointments = listAppointments();
   const defaultPartnerId = partnerParam ? Number(partnerParam) : undefined;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-8">
       <p className="mb-6 text-sm text-muted">
-        القائمة الكاملة للعملاء متاحة للجميع لترشيح من يرونه مناسبًا لحضور عرض الكولكشن، مع عدد مرات الترشيح وتسجيل الحضور.
+        موديول عروض الكولكشن: افتح عرضًا، رشّح العملاء المناسبين لحضوره، وأكّد الإدارة على المرشّحين.
       </p>
 
-      <section className="mb-6 flex flex-wrap items-center gap-3">
-        <form method="GET" className="flex items-end gap-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted">العرض الحالي</label>
-            <select name="show" defaultValue={selectedShowId} className="input">
-              {shows.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {s.eventDate ? `— ${formatDate(s.eventDate)}` : ""}
-                </option>
-              ))}
-            </select>
+      <section className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted">العروض</h2>
+          <CreateShowForm />
+        </div>
+
+        {shows.length === 0 ? (
+          <p className="card p-6 text-sm text-muted">لا يوجد أي عرض كولكشن بعد — أنشئ واحدًا للبدء.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {shows.map((show) => {
+              const counts = getNominationCounts(show.id);
+              const totalNominations = [...counts.values()].reduce((a, b) => a + b, 0);
+              return (
+                <div key={show.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div>
+                    <div className="font-medium">{show.name}</div>
+                    <div className="text-xs text-muted">
+                      {show.eventDate ? formatDate(show.eventDate) : "بدون تاريخ محدد"} ·{" "}
+                      <Users2 className="inline" size={12} /> {totalNominations} ترشيح
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/collections/${show.id}/customers`}
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+                      style={{ backgroundColor: "var(--accent)" }}
+                    >
+                      فتح العرض
+                      <ArrowLeft className="mr-1 inline" size={14} />
+                    </Link>
+                    <Link
+                      href={`/collections/${show.id}/nominees`}
+                      className="rounded-lg border border-card-border px-4 py-2 text-sm font-medium"
+                    >
+                      المرشّحون
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <button type="submit" className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm">
-            عرض
-          </button>
-        </form>
-        <CreateShowForm />
+        )}
       </section>
-
-      {!selectedShow ? (
-        <p className="card p-6 text-sm text-muted">لا يوجد أي عرض كولكشن بعد — أنشئ واحدًا للبدء بالترشيح.</p>
-      ) : (
-        <section className="mb-6">
-          <div className="card overflow-hidden">
-            <h2 className="px-5 pt-5 text-sm font-semibold text-muted">قائمة العملاء — {selectedShow.name}</h2>
-            <div className="overflow-x-auto p-5 pt-3">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="text-right text-xs text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">العميل</th>
-                    <th className="px-3 py-2 font-medium">عدد مرات الترشيح</th>
-                    <th className="px-3 py-2 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {partners.map((partner) => (
-                    <tr key={partner.id} className="border-t border-card-border">
-                      <td className="px-3 py-3">
-                        <Link href={`/customers/${partner.id}`} className="font-medium hover:underline">
-                          {partner.name}
-                        </Link>
-                        <div className="text-xs text-muted">{partner.city}</div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-600 dark:bg-violet-950 dark:text-violet-400">
-                          {nominationCounts.get(partner.id) ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <NominationActions
-                          showId={selectedShow.id}
-                          partnerId={partner.id}
-                          partnerName={partner.name}
-                          isRegistered={registeredPartnerIds.has(partner.id)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="card mt-4 p-5">
-            <h3 className="mb-3 text-sm font-semibold text-muted">آخر الترشيحات</h3>
-            <ul className="flex flex-col gap-2 text-sm">
-              {nominations.slice(0, 10).map((n) => (
-                <li key={n.id} className="rounded-lg bg-black/[0.03] px-3 py-2 dark:bg-white/[0.05]">
-                  <span className="font-medium">{n.partnerName}</span> — رشّحه {n.nominatedBy || "—"}
-                  {n.notes ? ` · ${n.notes}` : ""}
-                </li>
-              ))}
-              {nominations.length === 0 && <li className="text-muted">لا توجد ترشيحات بعد.</li>}
-            </ul>
-          </div>
-        </section>
-      )}
 
       <div id="schedule" className="mb-6">
         <ScheduleAppointmentForm partners={partners} defaultPartnerId={defaultPartnerId} />
