@@ -8,19 +8,23 @@ export default function NominateButton({
   showId,
   partnerId,
   partnerName,
+  alreadyNominatedByMe,
 }: {
   showId: number;
   partnerId: number;
   partnerName: string;
+  alreadyNominatedByMe: boolean;
 }) {
   const router = useRouter();
   const [noteOpen, setNoteOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const nominate = async (withNotes: boolean) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/collections/nominations", {
         method: "POST",
@@ -38,29 +42,44 @@ export default function NominateButton({
         setDone(true);
         router.refresh();
         setTimeout(() => setDone(false), 1500);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "تعذر الترشيح");
+        router.refresh();
       }
     } finally {
       setLoading(false);
     }
   };
 
+  if (alreadyNominatedByMe && !done) {
+    return (
+      <span className="rounded-md bg-black/5 px-3 py-1.5 text-xs font-medium text-muted dark:bg-white/10">
+        رشّحته بالفعل
+      </span>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={() => nominate(false)}
-        disabled={loading}
-        className="rounded-md px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
-        style={{ backgroundColor: "var(--accent)" }}
-      >
-        {done ? "تم الترشيح ✓" : loading ? "…" : "ترشيح"}
-      </button>
-      <button
-        onClick={() => setNoteOpen((v) => !v)}
-        title="إضافة ملاحظة (اختياري)"
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-card-border text-muted hover:bg-black/5 dark:hover:bg-white/10"
-      >
-        <MessageSquarePlus size={14} />
-      </button>
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => nominate(false)}
+          disabled={loading}
+          className="rounded-md px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+          style={{ backgroundColor: "var(--accent)" }}
+        >
+          {done ? "تم الترشيح ✓" : loading ? "…" : "ترشيح"}
+        </button>
+        <button
+          onClick={() => setNoteOpen((v) => !v)}
+          title="إضافة ملاحظة (اختياري)"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-card-border text-muted hover:bg-black/5 dark:hover:bg-white/10"
+        >
+          <MessageSquarePlus size={14} />
+        </button>
+      </div>
+      {error && <span className="text-xs text-red-600">{error}</span>}
 
       {noteOpen && (
         <form

@@ -9,7 +9,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-full flex-1">
-      <Sidebar />
+      <Sidebar isAdmin={user.role === "admin"} />
       <div className="flex min-h-full flex-1 flex-col">
         <TopBar user={user} />
         <main className="flex flex-1 flex-col">{children}</main>

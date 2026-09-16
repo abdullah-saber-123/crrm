@@ -39,6 +39,15 @@ function getPool(): Pool {
 
 async function ensureSchema(pool: Pool): Promise<void> {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'agent',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     CREATE TABLE IF NOT EXISTS account_reconciliations (
       id SERIAL PRIMARY KEY,
       partner_id INTEGER NOT NULL,
@@ -92,6 +101,27 @@ async function ensureSchema(pool: Pool): Promise<void> {
       registered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE(show_id, partner_id)
     );
+  `);
+
+  // One nomination per (show, customer, user) — added after nominations
+  // already existed in earlier deployments, so first collapse any
+  // duplicates already on file (keep the earliest row), then apply the
+  // constraint idempotently.
+  await pool.query(`
+    DELETE FROM nominations a USING nominations b
+    WHERE a.id > b.id
+      AND a.show_id = b.show_id
+      AND a.partner_id = b.partner_id
+      AND a.nominated_by IS NOT DISTINCT FROM b.nominated_by;
+  `);
+  await pool.query(`
+    DO $$
+    BEGIN
+      ALTER TABLE nominations
+        ADD CONSTRAINT nominations_show_partner_user_unique UNIQUE (show_id, partner_id, nominated_by);
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;
   `);
 }
 

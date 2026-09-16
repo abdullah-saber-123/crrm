@@ -157,6 +157,13 @@ export async function getNominationCounts(showId: number): Promise<Map<number, n
   return new Map(rows.map((r) => [r.partner_id as number, r.count as number]));
 }
 
+export class DuplicateNominationError extends Error {
+  constructor() {
+    super("لقد رشّحت هذا العميل مسبقًا لهذا العرض.");
+    this.name = "DuplicateNominationError";
+  }
+}
+
 export async function createNomination(input: {
   showId: number;
   partnerId: number;
@@ -165,13 +172,20 @@ export async function createNomination(input: {
   notes: string | null;
 }): Promise<Nomination> {
   const db = await getDb();
-  const { rows } = await db.query(
-    `INSERT INTO nominations (show_id, partner_id, partner_name, nominated_by, notes)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [input.showId, input.partnerId, input.partnerName, input.nominatedBy, input.notes]
-  );
-  return rowToNomination(rows[0]);
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO nominations (show_id, partner_id, partner_name, nominated_by, notes)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [input.showId, input.partnerId, input.partnerName, input.nominatedBy, input.notes]
+    );
+    return rowToNomination(rows[0]);
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "23505") {
+      throw new DuplicateNominationError();
+    }
+    throw err;
+  }
 }
 
 export async function listRegistrations(showId: number): Promise<Registration[]> {

@@ -11,11 +11,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "اسم المستخدم وكلمة المرور مطلوبان" }, { status: 400 });
   }
 
-  if (!checkCredentials(email, password)) {
+  const user = await checkCredentials(email, password);
+  if (!user) {
     return NextResponse.json({ error: "بيانات الدخول غير صحيحة" }, { status: 401 });
   }
 
-  const token = createSessionToken(email);
+  const token = createSessionToken(user);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,

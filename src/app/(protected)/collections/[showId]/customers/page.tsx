@@ -1,23 +1,44 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { getSessionUser } from "@/lib/auth";
 import { listPartners, getPartnerInvoices, getPartnerPayments } from "@/lib/customers-repo";
 import { analyzeCustomer } from "@/lib/customer-analytics";
-import { getShow, getNominationCounts } from "@/lib/collections-repo";
+import { getShow, getNominationCounts, listNominations } from "@/lib/collections-repo";
 import { formatCurrency } from "@/lib/format";
 import ShowTabs from "@/components/ShowTabs";
 import NominateButton from "@/components/NominateButton";
 
 export const dynamic = "force-dynamic";
 
-const SORT_OPTIONS = {
-  "name-asc": { label: "الاسم (أ-ي)" },
-  "name-desc": { label: "الاسم (ي-أ)" },
-  "credit-desc": { label: "الحد الائتماني (الأعلى)" },
-  "credit-asc": { label: "الحد الائتماني (الأقل)" },
-} as const;
+type SortField = "name" | "balance" | "credit";
+type SortDir = "asc" | "desc";
 
-type SortKey = keyof typeof SORT_OPTIONS;
+function SortHeader({
+  field,
+  label,
+  activeField,
+  activeDir,
+  baseQuery,
+}: {
+  field: SortField;
+  label: string;
+  activeField: SortField;
+  activeDir: SortDir;
+  baseQuery: string;
+}) {
+  const isActive = field === activeField;
+  const nextDir: SortDir = isActive && activeDir === "asc" ? "desc" : "asc";
+  const href = `?${baseQuery}sort=${field}-${nextDir}`;
+  const Icon = isActive ? (activeDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
+
+  return (
+    <Link href={href} className={`inline-flex items-center gap-1 hover:text-foreground ${isActive ? "text-foreground" : ""}`}>
+      {label}
+      <Icon size={13} />
+    </Link>
+  );
+}
 
 export default async function ShowCustomersPage({
   params,
@@ -32,10 +53,21 @@ export default async function ShowCustomersPage({
   const show = await getShow(showId);
   if (!show) notFound();
 
-  const sortKey: SortKey = sort && sort in SORT_OPTIONS ? (sort as SortKey) : "name-asc";
+  const sessionUser = await getSessionUser();
+
+  const [field, dir] = (sort?.split("-") ?? ["name", "asc"]) as [SortField, SortDir];
+  const sortField: SortField = ["name", "balance", "credit"].includes(field) ? field : "name";
+  const sortDir: SortDir = dir === "desc" ? "desc" : "asc";
+  const baseQuery = q ? `q=${encodeURIComponent(q)}&` : "";
 
   const partners = await listPartners();
-  const nominationCounts = await getNominationCounts(showId);
+  const [nominationCounts, nominations] = await Promise.all([
+    getNominationCounts(showId),
+    listNominations(showId),
+  ]);
+  const myNominatedPartnerIds = new Set(
+    nominations.filter((n) => n.nominatedBy === sessionUser?.name).map((n) => n.partnerId)
+  );
 
   let rows = await Promise.all(
     partners.map(async (partner) => {
@@ -53,16 +85,15 @@ export default async function ShowCustomersPage({
     rows = rows.filter(({ partner }) => partner.name.toLowerCase().includes(needle));
   }
 
+  const dirMul = sortDir === "asc" ? 1 : -1;
   rows = [...rows].sort((a, b) => {
-    switch (sortKey) {
-      case "name-asc":
-        return a.partner.name.localeCompare(b.partner.name, "ar");
-      case "name-desc":
-        return b.partner.name.localeCompare(a.partner.name, "ar");
-      case "credit-desc":
-        return b.partner.creditLimit - a.partner.creditLimit;
-      case "credit-asc":
-        return a.partner.creditLimit - b.partner.creditLimit;
+    switch (sortField) {
+      case "name":
+        return dirMul * a.partner.name.localeCompare(b.partner.name, "ar");
+      case "balance":
+        return dirMul * (a.balance - b.balance);
+      case "credit":
+        return dirMul * (a.partner.creditLimit - b.partner.creditLimit);
     }
   });
 
@@ -85,15 +116,9 @@ export default async function ShowCustomersPage({
             className="w-full bg-transparent outline-none"
           />
         </div>
-        <select name="sort" defaultValue={sortKey} className="input w-auto">
-          {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <input type="hidden" name="sort" value={`${sortField}-${sortDir}`} />
         <button type="submit" className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm font-medium">
-          تطبيق
+          بحث
         </button>
       </form>
 
@@ -102,11 +127,17 @@ export default async function ShowCustomersPage({
           <table className="w-full min-w-[860px] text-sm">
             <thead className="text-right text-xs text-muted">
               <tr>
-                <th className="px-3 py-2 font-medium">العميل</th>
+                <th className="px-3 py-2 font-medium">
+                  <SortHeader field="name" label="العميل" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                </th>
                 <th className="px-3 py-2 font-medium">التصنيف</th>
                 <th className="px-3 py-2 font-medium">المحصّل</th>
-                <th className="px-3 py-2 font-medium">الرصيد</th>
-                <th className="px-3 py-2 font-medium">الحد الائتماني</th>
+                <th className="px-3 py-2 font-medium">
+                  <SortHeader field="balance" label="الرصيد" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  <SortHeader field="credit" label="الحد الائتماني" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                </th>
                 <th className="px-3 py-2 font-medium">عدد الترشيحات</th>
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
@@ -140,7 +171,12 @@ export default async function ShowCustomersPage({
                     </span>
                   </td>
                   <td className="relative px-3 py-3">
-                    <NominateButton showId={showId} partnerId={partner.id} partnerName={partner.name} />
+                    <NominateButton
+                      showId={showId}
+                      partnerId={partner.id}
+                      partnerName={partner.name}
+                      alreadyNominatedByMe={myNominatedPartnerIds.has(partner.id)}
+                    />
                   </td>
                 </tr>
               ))}

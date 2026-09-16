@@ -11,6 +11,7 @@ const TITLES: { prefix: string; title: string }[] = [
   { prefix: "/customers", title: "لوحة التحكم" },
   { prefix: "/reconciliation", title: "المطابقات" },
   { prefix: "/collections", title: "عرض الكولكشن" },
+  { prefix: "/users", title: "المستخدمون" },
 ];
 
 function resolveTitle(pathname: string): string {

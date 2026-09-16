@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, GitCompareArrows, Gift } from "lucide-react";
+import { LayoutGrid, GitCompareArrows, Gift, Users } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/customers", label: "لوحة التحكم", icon: LayoutGrid },
@@ -10,8 +10,11 @@ const NAV_ITEMS = [
   { href: "/collections", label: "عرض الكولكشن", icon: Gift },
 ];
 
-export default function Sidebar() {
+const ADMIN_NAV_ITEMS = [{ href: "/users", label: "المستخدمون", icon: Users }];
+
+export default function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const items = isAdmin ? [...NAV_ITEMS, ...ADMIN_NAV_ITEMS] : NAV_ITEMS;
 
   return (
     <aside
@@ -28,7 +31,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
