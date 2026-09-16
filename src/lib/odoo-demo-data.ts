@@ -11,6 +11,7 @@ export type DemoPartner = {
   phone: string;
   city: string;
   credit_limit: number;
+  user_id: [number, string] | false;
 };
 
 export type DemoInvoice = {
@@ -37,12 +38,12 @@ export type DemoPayment = {
 };
 
 export const demoPartners: DemoPartner[] = [
-  { id: 101, name: "شركة الفا للتجارة", email: "billing@alfa-trade.example", phone: "+966 11 123 4567", city: "الرياض", credit_limit: 120000 },
-  { id: 102, name: "مؤسسة النور الصناعية", email: "ap@alnoor-ind.example", phone: "+966 12 234 5678", city: "جدة", credit_limit: 90000 },
-  { id: 103, name: "مجموعة الشرق للمقاولات", email: "finance@alsharq-cont.example", phone: "+966 13 345 6789", city: "الدمام", credit_limit: 60000 },
-  { id: 104, name: "متجر الواحة الغذائي", email: "accounts@waha-food.example", phone: "+966 14 456 7890", city: "المدينة المنورة", credit_limit: 100000 },
-  { id: 105, name: "شركة الرواد للتقنية", email: "finance@rowad-tech.example", phone: "+966 11 567 8901", city: "الرياض", credit_limit: 80000 },
-  { id: 106, name: "مصنع البركة للبلاستيك", email: "ap@baraka-plastic.example", phone: "+966 12 678 9012", city: "جدة", credit_limit: 50000 },
+  { id: 101, name: "شركة الفا للتجارة", email: "billing@alfa-trade.example", phone: "+966 11 123 4567", city: "الرياض", credit_limit: 120000, user_id: [1, "خالد العتيبي"] },
+  { id: 102, name: "مؤسسة النور الصناعية", email: "ap@alnoor-ind.example", phone: "+966 12 234 5678", city: "جدة", credit_limit: 90000, user_id: [2, "سارة القحطاني"] },
+  { id: 103, name: "مجموعة الشرق للمقاولات", email: "finance@alsharq-cont.example", phone: "+966 13 345 6789", city: "الدمام", credit_limit: 0, user_id: [1, "خالد العتيبي"] },
+  { id: 104, name: "متجر الواحة الغذائي", email: "accounts@waha-food.example", phone: "+966 14 456 7890", city: "المدينة المنورة", credit_limit: 100000, user_id: [3, "محمد الدوسري"] },
+  { id: 105, name: "شركة الرواد للتقنية", email: "finance@rowad-tech.example", phone: "+966 11 567 8901", city: "الرياض", credit_limit: 80000, user_id: [2, "سارة القحطاني"] },
+  { id: 106, name: "مصنع البركة للبلاستيك", email: "ap@baraka-plastic.example", phone: "+966 12 678 9012", city: "جدة", credit_limit: 0, user_id: false },
 ];
 
 function iso(date: Date): string {

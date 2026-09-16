@@ -15,6 +15,9 @@ export type Partner = {
   phone: string;
   city: string;
   creditLimit: number;
+  /** Derived from creditLimit: 0 → نقدي (cash), otherwise أجل (credit/term). */
+  paymentType: "cash" | "credit";
+  collectorName: string | null;
 };
 
 export type Invoice = {
@@ -39,6 +42,8 @@ export type Payment = {
 
 export const usingLiveOdoo = isOdooConfigured();
 
+const PARTNER_FIELDS = ["id", "name", "email", "phone", "city", "credit_limit", "user_id"];
+
 type OdooPartner = {
   id: number;
   name: string;
@@ -46,6 +51,8 @@ type OdooPartner = {
   phone: string;
   city: string;
   credit_limit: number;
+  /** Salesperson/account manager — many2one, [id, name] or false when unset. */
+  user_id: [number, string] | false;
 };
 
 function mapOdooPartner(r: OdooPartner): Partner {
@@ -56,6 +63,8 @@ function mapOdooPartner(r: OdooPartner): Partner {
     phone: r.phone,
     city: r.city,
     creditLimit: r.credit_limit,
+    paymentType: r.credit_limit > 0 ? "credit" : "cash",
+    collectorName: r.user_id ? r.user_id[1] : null,
   };
 }
 
@@ -64,7 +73,7 @@ export async function listPartners(): Promise<Partner[]> {
     const rows = await searchRead<OdooPartner>(
       "res.partner",
       [["customer_rank", ">", 0]],
-      ["id", "name", "email", "phone", "city", "credit_limit"],
+      PARTNER_FIELDS,
       { limit: 200, order: "name asc" }
     );
     return rows.map(mapOdooPartner);
@@ -74,11 +83,7 @@ export async function listPartners(): Promise<Partner[]> {
 
 export async function getPartner(id: number): Promise<Partner | undefined> {
   if (usingLiveOdoo) {
-    const rows = await searchRead<OdooPartner>(
-      "res.partner",
-      [["id", "=", id]],
-      ["id", "name", "email", "phone", "city", "credit_limit"]
-    );
+    const rows = await searchRead<OdooPartner>("res.partner", [["id", "=", id]], PARTNER_FIELDS);
     return rows[0] ? mapOdooPartner(rows[0]) : undefined;
   }
   const demo = getDemoPartner(id);
