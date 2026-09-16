@@ -128,7 +128,12 @@ async function ensureSchema(pool: Pool): Promise<void> {
 export async function getDb(): Promise<Pool> {
   const pool = getPool();
   if (!globalThis.__schemaReady) {
-    globalThis.__schemaReady = ensureSchema(pool);
+    globalThis.__schemaReady = ensureSchema(pool).catch((err) => {
+      // Don't cache a failed migration forever — the next call should
+      // retry rather than fail permanently until the process restarts.
+      globalThis.__schemaReady = undefined;
+      throw err;
+    });
   }
   await globalThis.__schemaReady;
   return pool;

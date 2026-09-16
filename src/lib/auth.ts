@@ -47,9 +47,15 @@ export async function checkCredentials(
   username: string,
   password: string
 ): Promise<{ id: number; username: string; name: string; role: Role } | null> {
-  const dbUser = await findUserByUsername(username);
-  if (dbUser && verifyPassword(password, dbUser.passwordHash)) {
-    return { id: dbUser.id, username: dbUser.username, name: dbUser.name, role: dbUser.role };
+  try {
+    const dbUser = await findUserByUsername(username);
+    if (dbUser && verifyPassword(password, dbUser.passwordHash)) {
+      return { id: dbUser.id, username: dbUser.username, name: dbUser.name, role: dbUser.role };
+    }
+  } catch (err) {
+    // The DB lookup must never block the bootstrap admin below — that
+    // account exists specifically so a DB outage can't lock everyone out.
+    console.error("checkCredentials: DB lookup failed, falling back to bootstrap admin only", err);
   }
 
   const bootstrap = getBootstrapAdmin();
