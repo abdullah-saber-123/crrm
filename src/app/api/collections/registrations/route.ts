@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const registration = registerCustomer({
+  const registration = await registerCustomer({
     showId,
     partnerId,
     partnerName,

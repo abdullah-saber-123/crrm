@@ -27,8 +27,18 @@ export default async function CollectionsPage({
   searchParams: Promise<{ partner?: string }>;
 }) {
   const { partner: partnerParam } = await searchParams;
-  const [shows, partners] = await Promise.all([listShows(), listPartners()]);
-  const appointments = listAppointments();
+  const [shows, partners, appointments] = await Promise.all([
+    listShows(),
+    listPartners(),
+    listAppointments(),
+  ]);
+  const showTotals = await Promise.all(
+    shows.map(async (show) => {
+      const counts = await getNominationCounts(show.id);
+      return { showId: show.id, total: [...counts.values()].reduce((a, b) => a + b, 0) };
+    })
+  );
+  const totalsByShow = new Map(showTotals.map((t) => [t.showId, t.total]));
   const defaultPartnerId = partnerParam ? Number(partnerParam) : undefined;
 
   return (
@@ -48,8 +58,7 @@ export default async function CollectionsPage({
         ) : (
           <div className="flex flex-col gap-3">
             {shows.map((show) => {
-              const counts = getNominationCounts(show.id);
-              const totalNominations = [...counts.values()].reduce((a, b) => a + b, 0);
+              const totalNominations = totalsByShow.get(show.id) ?? 0;
               return (
                 <div key={show.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>

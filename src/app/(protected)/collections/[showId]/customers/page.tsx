@@ -16,11 +16,11 @@ export default async function ShowCustomersPage({
 }) {
   const { showId: showIdParam } = await params;
   const showId = Number(showIdParam);
-  const show = getShow(showId);
+  const show = await getShow(showId);
   if (!show) notFound();
 
   const partners = await listPartners();
-  const nominationCounts = getNominationCounts(showId);
+  const nominationCounts = await getNominationCounts(showId);
 
   const rows = await Promise.all(
     partners.map(async (partner) => {

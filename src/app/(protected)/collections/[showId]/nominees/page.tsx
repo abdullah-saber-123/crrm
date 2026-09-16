@@ -18,12 +18,14 @@ export default async function ShowNomineesPage({
 }) {
   const { showId: showIdParam } = await params;
   const showId = Number(showIdParam);
-  const show = getShow(showId);
+  const show = await getShow(showId);
   if (!show) notFound();
 
-  const nominations = listNominations(showId);
-  const counts = getNominationCounts(showId);
-  const registrations = listRegistrations(showId);
+  const [nominations, counts, registrations] = await Promise.all([
+    listNominations(showId),
+    getNominationCounts(showId),
+    listRegistrations(showId),
+  ]);
   const registeredPartnerIds = new Set(registrations.map((r) => r.partnerId));
 
   const nomineeIds = [...counts.keys()];

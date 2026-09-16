@@ -31,15 +31,15 @@ function rowToRecord(row: Record<string, unknown>): AccountReconciliation {
     id: row.id as number,
     partnerId: row.partner_id as number,
     partnerName: row.partner_name as string,
-    asOfDate: row.as_of_date as string,
-    balance: row.balance as number,
-    totalInvoiced: row.total_invoiced as number,
-    totalPaid: row.total_paid as number,
+    asOfDate: (row.as_of_date as Date).toISOString().slice(0, 10),
+    balance: Number(row.balance),
+    totalInvoiced: Number(row.total_invoiced),
+    totalPaid: Number(row.total_paid),
     status: row.status as AccountReconciliation["status"],
     confirmedBy: row.confirmed_by as string | null,
-    confirmedAt: row.confirmed_at as string | null,
+    confirmedAt: row.confirmed_at ? (row.confirmed_at as Date).toISOString() : null,
     notes: row.notes as string | null,
-    createdAt: row.created_at as string,
+    createdAt: (row.created_at as Date).toISOString(),
   };
 }
 
@@ -76,18 +76,18 @@ export async function computeAccountBalanceAsOf(
   };
 }
 
-export function listAccountReconciliations(partnerId?: number): AccountReconciliation[] {
-  const rows = partnerId
-    ? (getDb()
-        .prepare("SELECT * FROM account_reconciliations WHERE partner_id = ? ORDER BY created_at DESC")
-        .all(partnerId) as Record<string, unknown>[])
-    : (getDb()
-        .prepare("SELECT * FROM account_reconciliations ORDER BY created_at DESC")
-        .all() as Record<string, unknown>[]);
+export async function listAccountReconciliations(partnerId?: number): Promise<AccountReconciliation[]> {
+  const db = await getDb();
+  const { rows } = partnerId
+    ? await db.query(
+        "SELECT * FROM account_reconciliations WHERE partner_id = $1 ORDER BY created_at DESC",
+        [partnerId]
+      )
+    : await db.query("SELECT * FROM account_reconciliations ORDER BY created_at DESC");
   return rows.map(rowToRecord);
 }
 
-export function confirmAccountReconciliation(input: {
+export async function confirmAccountReconciliation(input: {
   partnerId: number;
   partnerName: string;
   asOfDate: string;
@@ -97,20 +97,25 @@ export function confirmAccountReconciliation(input: {
   status: "confirmed" | "rejected";
   confirmedBy: string;
   notes: string | null;
-}): AccountReconciliation {
-  const now = new Date().toISOString();
-  const result = getDb()
-    .prepare(
-      `INSERT INTO account_reconciliations
-        (partner_id, partner_name, as_of_date, balance, total_invoiced, total_paid,
-         status, confirmed_by, confirmed_at, notes)
-       VALUES (@partnerId, @partnerName, @asOfDate, @balance, @totalInvoiced, @totalPaid,
-               @status, @confirmedBy, @confirmedAt, @notes)`
-    )
-    .run({ ...input, confirmedAt: now });
-
-  const row = getDb()
-    .prepare("SELECT * FROM account_reconciliations WHERE id = ?")
-    .get(result.lastInsertRowid) as Record<string, unknown>;
-  return rowToRecord(row);
+}): Promise<AccountReconciliation> {
+  const db = await getDb();
+  const { rows } = await db.query(
+    `INSERT INTO account_reconciliations
+      (partner_id, partner_name, as_of_date, balance, total_invoiced, total_paid,
+       status, confirmed_by, confirmed_at, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
+     RETURNING *`,
+    [
+      input.partnerId,
+      input.partnerName,
+      input.asOfDate,
+      input.balance,
+      input.totalInvoiced,
+      input.totalPaid,
+      input.status,
+      input.confirmedBy,
+      input.notes,
+    ]
+  );
+  return rowToRecord(rows[0]);
 }

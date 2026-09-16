@@ -13,6 +13,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "حالة غير صالحة" }, { status: 400 });
   }
 
-  updateAppointmentStatus(Number(id), status);
+  await updateAppointmentStatus(Number(id), status);
   return NextResponse.json({ ok: true });
 }

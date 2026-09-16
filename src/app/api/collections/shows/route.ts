@@ -9,6 +9,6 @@ export async function POST(request: Request) {
   const { name, eventDate } = await request.json();
   if (!name) return NextResponse.json({ error: "اسم العرض مطلوب" }, { status: 400 });
 
-  const show = createShow({ name, eventDate: eventDate || null });
+  const show = await createShow({ name, eventDate: eventDate || null });
   return NextResponse.json({ show });
 }
