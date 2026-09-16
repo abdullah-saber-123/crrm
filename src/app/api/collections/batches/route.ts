@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { registerCustomer } from "@/lib/collections-repo";
+import { setNomineeBatch, type NomineeBatch } from "@/lib/collections-repo";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -8,18 +8,12 @@ export async function POST(request: Request) {
   if (user.role !== "admin") return NextResponse.json({ error: "هذا الإجراء يتطلب صلاحية مدير" }, { status: 403 });
 
   const body = await request.json();
-  const { showId, partnerId, partnerName } = body;
+  const { showId, partnerId, batch } = body;
 
-  if (typeof showId !== "number" || typeof partnerId !== "number" || !partnerName) {
+  if (typeof showId !== "number" || typeof partnerId !== "number" || ![1, 2, 3].includes(batch)) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const registration = await registerCustomer({
-    showId,
-    partnerId,
-    partnerName,
-    registeredBy: user.name,
-  });
-
-  return NextResponse.json({ registration });
+  await setNomineeBatch({ showId, partnerId, batch: batch as NomineeBatch, updatedBy: user.name });
+  return NextResponse.json({ ok: true });
 }

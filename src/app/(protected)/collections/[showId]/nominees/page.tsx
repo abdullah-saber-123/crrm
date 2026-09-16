@@ -1,64 +1,120 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { Search } from "lucide-react";
+import { getSessionUser } from "@/lib/auth";
 import {
   getShow,
   listNominations,
   getNominationCounts,
   listRegistrations,
+  getNomineeBatches,
 } from "@/lib/collections-repo";
 import ShowTabs from "@/components/ShowTabs";
 import ConfirmNomineeButton from "@/components/ConfirmNomineeButton";
+import BatchSelect from "@/components/BatchSelect";
+import PrintButton from "@/components/PrintButton";
+import SortableHeader from "@/components/SortableHeader";
 
 export const dynamic = "force-dynamic";
 
+type SortField = "name" | "count";
+type SortDir = "asc" | "desc";
+
 export default async function ShowNomineesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ showId: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser || sessionUser.role !== "admin") redirect("/collections");
+
   const { showId: showIdParam } = await params;
+  const { q, sort } = await searchParams;
   const showId = Number(showIdParam);
   const show = await getShow(showId);
   if (!show) notFound();
 
-  const [nominations, counts, registrations] = await Promise.all([
+  const [field, dir] = (sort?.split("-") ?? ["count", "desc"]) as [SortField, SortDir];
+  const sortField: SortField = ["name", "count"].includes(field) ? field : "count";
+  const sortDir: SortDir = dir === "asc" ? "asc" : "desc";
+  const baseQuery = q ? `q=${encodeURIComponent(q)}&` : "";
+
+  const [nominations, counts, registrations, batches] = await Promise.all([
     listNominations(showId),
     getNominationCounts(showId),
     listRegistrations(showId),
+    getNomineeBatches(showId),
   ]);
   const registeredPartnerIds = new Set(registrations.map((r) => r.partnerId));
 
   const nomineeIds = [...counts.keys()];
-  const nominees = nomineeIds
-    .map((partnerId) => {
-      const partnerNominations = nominations.filter((n) => n.partnerId === partnerId);
-      return {
-        partnerId,
-        partnerName: partnerNominations[0]?.partnerName ?? "",
-        count: counts.get(partnerId) ?? 0,
-        nominatedBy: [...new Set(partnerNominations.map((n) => n.nominatedBy || "—"))].join("، "),
-        lastNote: partnerNominations[0]?.notes ?? null,
-      };
-    })
-    .sort((a, b) => b.count - a.count);
+  let nominees = nomineeIds.map((partnerId) => {
+    const partnerNominations = nominations.filter((n) => n.partnerId === partnerId);
+    return {
+      partnerId,
+      partnerName: partnerNominations[0]?.partnerName ?? "",
+      count: counts.get(partnerId) ?? 0,
+      nominatedBy: [...new Set(partnerNominations.map((n) => n.nominatedBy || "—"))].join("، "),
+      lastNote: partnerNominations[0]?.notes ?? null,
+      batch: batches.get(partnerId) ?? null,
+    };
+  });
+
+  if (q) {
+    const needle = q.trim().toLowerCase();
+    nominees = nominees.filter((n) => n.partnerName.toLowerCase().includes(needle));
+  }
+
+  const dirMul = sortDir === "asc" ? 1 : -1;
+  nominees = [...nominees].sort((a, b) => {
+    if (sortField === "name") return dirMul * a.partnerName.localeCompare(b.partnerName, "ar");
+    return dirMul * (a.count - b.count);
+  });
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-8">
-      <ShowTabs showId={showId} active="nominees" />
-      <h1 className="mb-1 text-lg font-semibold">{show.name} — المرشّحون</h1>
+      <ShowTabs showId={showId} active="nominees" isAdmin />
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold">{show.name} — المرشّحون</h1>
+        <PrintButton />
+      </div>
       <p className="mb-6 text-sm text-muted">
-        العملاء اللي حصلوا على ترشيح واحد أو أكثر لهذا العرض. الإدارة تراجع وتؤكّد تسجيل العميل بالعرض.
+        العملاء اللي حصلوا على ترشيح واحد أو أكثر لهذا العرض. الإدارة تراجع وتؤكّد تسجيل العميل بالعرض، وتحدد دفعة الاستدعاء.
       </p>
 
-      <section className="card overflow-hidden">
+      <form method="GET" className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+        <div className="flex flex-1 min-w-48 items-center gap-2 rounded-lg border border-card-border bg-card px-3 py-2 text-sm">
+          <Search size={16} className="text-muted" />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="ابحث باسم العميل…"
+            className="w-full bg-transparent outline-none"
+          />
+        </div>
+        <input type="hidden" name="sort" value={`${sortField}-${sortDir}`} />
+        <button type="submit" className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm font-medium">
+          بحث
+        </button>
+      </form>
+
+      <section className="card overflow-visible print:border-0 print:shadow-none">
         <div className="overflow-x-auto p-5">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="text-right text-xs text-muted">
               <tr>
-                <th className="px-3 py-2 font-medium">العميل</th>
-                <th className="px-3 py-2 font-medium">إجمالي الترشيحات</th>
+                <th className="px-3 py-2 font-medium">
+                  <SortableHeader field="name" label="العميل" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  <SortableHeader field="count" label="إجمالي الترشيحات" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                </th>
                 <th className="px-3 py-2 font-medium">رشّحه</th>
                 <th className="px-3 py-2 font-medium">ملاحظة</th>
+                <th className="px-3 py-2 font-medium">الدفعة</th>
                 <th className="px-3 py-2 font-medium">تأكيد الإدارة</th>
               </tr>
             </thead>
@@ -78,6 +134,9 @@ export default async function ShowNomineesPage({
                   <td className="px-3 py-3 text-muted">{n.nominatedBy}</td>
                   <td className="px-3 py-3 text-muted">{n.lastNote || "—"}</td>
                   <td className="px-3 py-3">
+                    <BatchSelect showId={showId} partnerId={n.partnerId} batch={n.batch} />
+                  </td>
+                  <td className="px-3 py-3">
                     <ConfirmNomineeButton
                       showId={showId}
                       partnerId={n.partnerId}
@@ -89,7 +148,7 @@ export default async function ShowNomineesPage({
               ))}
               {nominees.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-muted">
+                  <td colSpan={6} className="px-3 py-6 text-center text-muted">
                     لا يوجد مرشّحون بعد — رشّح عملاء من صفحة كل العملاء.
                   </td>
                 </tr>

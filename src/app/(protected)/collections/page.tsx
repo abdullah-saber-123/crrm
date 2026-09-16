@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Users2 } from "lucide-react";
+import { getSessionUser } from "@/lib/auth";
 import { listPartners } from "@/lib/customers-repo";
 import { listShows, getNominationCounts, listAppointments } from "@/lib/collections-repo";
 import { formatDate } from "@/lib/format";
@@ -27,6 +28,8 @@ export default async function CollectionsPage({
   searchParams: Promise<{ partner?: string }>;
 }) {
   const { partner: partnerParam } = await searchParams;
+  const sessionUser = await getSessionUser();
+  const isAdmin = sessionUser?.role === "admin";
   const [shows, partners, appointments] = await Promise.all([
     listShows(),
     listPartners(),
@@ -77,12 +80,14 @@ export default async function CollectionsPage({
                       فتح العرض
                       <ArrowLeft className="mr-1 inline" size={14} />
                     </Link>
-                    <Link
-                      href={`/collections/${show.id}/nominees`}
-                      className="rounded-lg border border-card-border px-4 py-2 text-sm font-medium"
-                    >
-                      المرشّحون
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href={`/collections/${show.id}/nominees`}
+                        className="rounded-lg border border-card-border px-4 py-2 text-sm font-medium"
+                      >
+                        المرشّحون
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

@@ -38,6 +38,8 @@ export type Registration = {
   registeredAt: string;
 };
 
+export type NomineeBatch = 1 | 2 | 3;
+
 function rowToAppointment(row: Record<string, unknown>): Appointment {
   return {
     id: row.id as number,
@@ -215,4 +217,30 @@ export async function registerCustomer(input: {
     [input.showId, input.partnerId]
   );
   return rowToRegistration(rows[0]);
+}
+
+// ---- Nominee batches (دفعات الاستدعاء) ---------------------------------
+
+export async function getNomineeBatches(showId: number): Promise<Map<number, NomineeBatch>> {
+  const db = await getDb();
+  const { rows } = await db.query("SELECT partner_id, batch FROM nominee_batches WHERE show_id = $1", [
+    showId,
+  ]);
+  return new Map(rows.map((r) => [r.partner_id as number, r.batch as NomineeBatch]));
+}
+
+export async function setNomineeBatch(input: {
+  showId: number;
+  partnerId: number;
+  batch: NomineeBatch;
+  updatedBy: string | null;
+}): Promise<void> {
+  const db = await getDb();
+  await db.query(
+    `INSERT INTO nominee_batches (show_id, partner_id, batch, updated_by, updated_at)
+     VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (show_id, partner_id)
+     DO UPDATE SET batch = EXCLUDED.batch, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+    [input.showId, input.partnerId, input.batch, input.updatedBy]
+  );
 }

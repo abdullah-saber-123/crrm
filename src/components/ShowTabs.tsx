@@ -3,13 +3,17 @@ import Link from "next/link";
 export default function ShowTabs({
   showId,
   active,
+  isAdmin,
 }: {
   showId: number;
   active: "customers" | "nominees";
+  isAdmin: boolean;
 }) {
   const tabs = [
     { key: "customers" as const, href: `/collections/${showId}/customers`, label: "كل العملاء" },
-    { key: "nominees" as const, href: `/collections/${showId}/nominees`, label: "المرشّحون" },
+    ...(isAdmin
+      ? [{ key: "nominees" as const, href: `/collections/${showId}/nominees`, label: "المرشّحون" }]
+      : []),
   ];
 
   return (

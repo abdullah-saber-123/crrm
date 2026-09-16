@@ -101,6 +101,16 @@ async function ensureSchema(pool: Pool): Promise<void> {
       registered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE(show_id, partner_id)
     );
+
+    CREATE TABLE IF NOT EXISTS nominee_batches (
+      id SERIAL PRIMARY KEY,
+      show_id INTEGER NOT NULL REFERENCES collection_shows(id) ON DELETE CASCADE,
+      partner_id INTEGER NOT NULL,
+      batch INTEGER NOT NULL DEFAULT 1,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(show_id, partner_id)
+    );
   `);
 
   // One nomination per (show, customer, user) — added after nominations

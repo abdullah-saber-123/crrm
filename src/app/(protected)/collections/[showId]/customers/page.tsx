@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Search } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
 import { listPartners, getPartnerInvoices, getPartnerPayments } from "@/lib/customers-repo";
 import { analyzeCustomer } from "@/lib/customer-analytics";
@@ -8,37 +8,12 @@ import { getShow, getNominationCounts, listNominations } from "@/lib/collections
 import { formatCurrency } from "@/lib/format";
 import ShowTabs from "@/components/ShowTabs";
 import NominateButton from "@/components/NominateButton";
+import SortableHeader from "@/components/SortableHeader";
 
 export const dynamic = "force-dynamic";
 
 type SortField = "name" | "balance" | "credit";
 type SortDir = "asc" | "desc";
-
-function SortHeader({
-  field,
-  label,
-  activeField,
-  activeDir,
-  baseQuery,
-}: {
-  field: SortField;
-  label: string;
-  activeField: SortField;
-  activeDir: SortDir;
-  baseQuery: string;
-}) {
-  const isActive = field === activeField;
-  const nextDir: SortDir = isActive && activeDir === "asc" ? "desc" : "asc";
-  const href = `?${baseQuery}sort=${field}-${nextDir}`;
-  const Icon = isActive ? (activeDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
-
-  return (
-    <Link href={href} className={`inline-flex items-center gap-1 hover:text-foreground ${isActive ? "text-foreground" : ""}`}>
-      {label}
-      <Icon size={13} />
-    </Link>
-  );
-}
 
 export default async function ShowCustomersPage({
   params,
@@ -99,7 +74,7 @@ export default async function ShowCustomersPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-8">
-      <ShowTabs showId={showId} active="customers" />
+      <ShowTabs showId={showId} active="customers" isAdmin={sessionUser?.role === "admin"} />
       <h1 className="mb-1 text-lg font-semibold">{show.name}</h1>
       <p className="mb-6 text-sm text-muted">
         القائمة الكاملة للعملاء متاحة للجميع — رشّح أي عميل تراه مناسبًا لحضور هذا العرض.
@@ -128,15 +103,15 @@ export default async function ShowCustomersPage({
             <thead className="text-right text-xs text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">
-                  <SortHeader field="name" label="العميل" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                  <SortableHeader field="name" label="العميل" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
                 </th>
                 <th className="px-3 py-2 font-medium">التصنيف</th>
                 <th className="px-3 py-2 font-medium">المحصّل</th>
                 <th className="px-3 py-2 font-medium">
-                  <SortHeader field="balance" label="الرصيد" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                  <SortableHeader field="balance" label="الرصيد" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
                 </th>
                 <th className="px-3 py-2 font-medium">
-                  <SortHeader field="credit" label="الحد الائتماني" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
+                  <SortableHeader field="credit" label="الحد الائتماني" activeField={sortField} activeDir={sortDir} baseQuery={baseQuery} />
                 </th>
                 <th className="px-3 py-2 font-medium">عدد الترشيحات</th>
                 <th className="px-3 py-2 font-medium"></th>
