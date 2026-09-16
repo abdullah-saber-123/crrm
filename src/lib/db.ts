@@ -114,13 +114,22 @@ async function ensureSchema(pool: Pool): Promise<void> {
       AND a.partner_id = b.partner_id
       AND a.nominated_by IS NOT DISTINCT FROM b.nominated_by;
   `);
+  // Check information_schema first rather than relying on catching a
+  // specific exception class — Postgres raises different error codes here
+  // depending on why the constraint already exists (duplicate_object vs.
+  // duplicate_table for its backing index), so guessing which one to catch
+  // is fragile.
   await pool.query(`
     DO $$
     BEGIN
-      ALTER TABLE nominations
-        ADD CONSTRAINT nominations_show_partner_user_unique UNIQUE (show_id, partner_id, nominated_by);
-    EXCEPTION
-      WHEN duplicate_object THEN NULL;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'nominations'
+          AND constraint_name = 'nominations_show_partner_user_unique'
+      ) THEN
+        ALTER TABLE nominations
+          ADD CONSTRAINT nominations_show_partner_user_unique UNIQUE (show_id, partner_id, nominated_by);
+      END IF;
     END $$;
   `);
 }
