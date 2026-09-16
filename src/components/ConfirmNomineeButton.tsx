@@ -40,12 +40,15 @@ export default function ConfirmNomineeButton({
   };
 
   return (
-    <button
-      onClick={confirm}
-      disabled={loading}
-      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
-    >
-      {loading ? "جارٍ التأكيد…" : "تأكيد"}
-    </button>
+    <>
+      <button
+        onClick={confirm}
+        disabled={loading}
+        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 print:hidden"
+      >
+        {loading ? "جارٍ التأكيد…" : "تأكيد"}
+      </button>
+      <span className="hidden text-muted print:inline">بانتظار التأكيد</span>
+    </>
   );
 }

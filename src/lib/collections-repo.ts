@@ -16,6 +16,7 @@ export type CollectionShow = {
   id: number;
   name: string;
   eventDate: string | null;
+  status: "open" | "closed";
   createdAt: string;
 };
 
@@ -59,6 +60,7 @@ function rowToShow(row: Record<string, unknown>): CollectionShow {
     id: row.id as number,
     name: row.name as string,
     eventDate: row.event_date ? (row.event_date as Date).toISOString().slice(0, 10) : null,
+    status: row.status as CollectionShow["status"],
     createdAt: (row.created_at as Date).toISOString(),
   };
 }
@@ -139,6 +141,11 @@ export async function createShow(input: { name: string; eventDate: string | null
   return rowToShow(rows[0]);
 }
 
+export async function updateShowStatus(id: number, status: "open" | "closed"): Promise<void> {
+  const db = await getDb();
+  await db.query("UPDATE collection_shows SET status = $1 WHERE id = $2", [status, id]);
+}
+
 // ---- Nominations & registrations --------------------------------------
 
 export async function listNominations(showId: number): Promise<Nomination[]> {
@@ -166,6 +173,13 @@ export class DuplicateNominationError extends Error {
   }
 }
 
+export class ShowClosedError extends Error {
+  constructor() {
+    super("هذا العرض مغلق ولا يقبل ترشيحات جديدة.");
+    this.name = "ShowClosedError";
+  }
+}
+
 export async function createNomination(input: {
   showId: number;
   partnerId: number;
@@ -174,6 +188,10 @@ export async function createNomination(input: {
   notes: string | null;
 }): Promise<Nomination> {
   const db = await getDb();
+  const show = await getShow(input.showId);
+  if (show?.status === "closed") {
+    throw new ShowClosedError();
+  }
   try {
     const { rows } = await db.query(
       `INSERT INTO nominations (show_id, partner_id, partner_name, nominated_by, notes)

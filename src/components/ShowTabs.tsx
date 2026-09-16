@@ -17,7 +17,7 @@ export default function ShowTabs({
   ];
 
   return (
-    <div className="mb-6 flex items-center gap-2">
+    <div className="mb-6 flex items-center gap-2 print:hidden">
       <Link href="/collections" className="text-sm text-muted hover:underline">
         ← العروض
       </Link>

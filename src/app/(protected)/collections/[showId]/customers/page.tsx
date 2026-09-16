@@ -20,10 +20,10 @@ export default async function ShowCustomersPage({
   searchParams,
 }: {
   params: Promise<{ showId: string }>;
-  searchParams: Promise<{ q?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; collector?: string }>;
 }) {
   const { showId: showIdParam } = await params;
-  const { q, sort } = await searchParams;
+  const { q, sort, collector } = await searchParams;
   const showId = Number(showIdParam);
   const show = await getShow(showId);
   if (!show) notFound();
@@ -33,7 +33,7 @@ export default async function ShowCustomersPage({
   const [field, dir] = (sort?.split("-") ?? ["name", "asc"]) as [SortField, SortDir];
   const sortField: SortField = ["name", "balance", "credit"].includes(field) ? field : "name";
   const sortDir: SortDir = dir === "desc" ? "desc" : "asc";
-  const baseQuery = q ? `q=${encodeURIComponent(q)}&` : "";
+  const baseQuery = `${q ? `q=${encodeURIComponent(q)}&` : ""}${collector ? `collector=${encodeURIComponent(collector)}&` : ""}`;
 
   const partners = await listPartners();
   const [nominationCounts, nominations] = await Promise.all([
@@ -55,9 +55,17 @@ export default async function ShowCustomersPage({
     })
   );
 
+  const collectors = [...new Set(partners.map((p) => p.collectorName).filter((c): c is string => !!c))].sort(
+    (a, b) => a.localeCompare(b, "ar")
+  );
+
   if (q) {
     const needle = q.trim().toLowerCase();
     rows = rows.filter(({ partner }) => partner.name.toLowerCase().includes(needle));
+  }
+
+  if (collector) {
+    rows = rows.filter(({ partner }) => partner.collectorName === collector);
   }
 
   const dirMul = sortDir === "asc" ? 1 : -1;
@@ -76,9 +84,15 @@ export default async function ShowCustomersPage({
     <div className="mx-auto w-full max-w-6xl px-6 py-8">
       <ShowTabs showId={showId} active="customers" isAdmin={sessionUser?.role === "admin"} />
       <h1 className="mb-1 text-lg font-semibold">{show.name}</h1>
-      <p className="mb-6 text-sm text-muted">
+      <p className="mb-4 text-sm text-muted">
         القائمة الكاملة للعملاء متاحة للجميع — رشّح أي عميل تراه مناسبًا لحضور هذا العرض.
       </p>
+
+      {show.status === "closed" && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+          هذا العرض مغلق ولا يقبل ترشيحات جديدة.
+        </div>
+      )}
 
       <form method="GET" className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex flex-1 min-w-48 items-center gap-2 rounded-lg border border-card-border bg-card px-3 py-2 text-sm">
@@ -91,6 +105,18 @@ export default async function ShowCustomersPage({
             className="w-full bg-transparent outline-none"
           />
         </div>
+        <select
+          name="collector"
+          defaultValue={collector ?? ""}
+          className="rounded-lg border border-card-border bg-card px-3 py-2 text-sm"
+        >
+          <option value="">كل المحصّلين</option>
+          {collectors.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
         <input type="hidden" name="sort" value={`${sortField}-${sortDir}`} />
         <button type="submit" className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm font-medium">
           بحث
@@ -151,6 +177,7 @@ export default async function ShowCustomersPage({
                       partnerId={partner.id}
                       partnerName={partner.name}
                       alreadyNominatedByMe={myNominatedPartnerIds.has(partner.id)}
+                      disabled={show.status === "closed"}
                     />
                   </td>
                 </tr>

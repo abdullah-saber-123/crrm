@@ -79,6 +79,7 @@ async function ensureSchema(pool: Pool): Promise<void> {
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       event_date DATE,
+      status TEXT NOT NULL DEFAULT 'open',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
@@ -111,6 +112,12 @@ async function ensureSchema(pool: Pool): Promise<void> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE(show_id, partner_id)
     );
+  `);
+
+  // status column added after collection_shows already existed in earlier
+  // deployments — ADD COLUMN IF NOT EXISTS is natively idempotent.
+  await pool.query(`
+    ALTER TABLE collection_shows ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open';
   `);
 
   // One nomination per (show, customer, user) — added after nominations

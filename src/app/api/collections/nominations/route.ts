@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { createNomination, DuplicateNominationError } from "@/lib/collections-repo";
+import { createNomination, DuplicateNominationError, ShowClosedError } from "@/lib/collections-repo";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -27,6 +27,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ nomination });
   } catch (err) {
     if (err instanceof DuplicateNominationError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    if (err instanceof ShowClosedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

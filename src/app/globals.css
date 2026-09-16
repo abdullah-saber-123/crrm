@@ -68,14 +68,93 @@ body {
 }
 
 @media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+
   aside,
   header {
     display: none !important;
   }
+
   main {
     padding: 0 !important;
   }
+
   body {
     background: #fff !important;
+    color: #111 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .card {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .print-header {
+    margin-bottom: 14px;
+    border-bottom: 2px solid #111;
+    padding-bottom: 10px;
+  }
+
+  .print-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 4px;
+  }
+
+  .print-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    font-size: 11px;
+    color: #444;
+  }
+
+  .print-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    font-size: 11px;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #ccc !important;
+    padding: 6px 8px !important;
+    color: #111 !important;
+  }
+
+  .print-table thead {
+    display: table-header-group;
+  }
+
+  .print-table thead tr {
+    background: #eee !important;
+  }
+
+  .print-table th {
+    font-weight: 700 !important;
+    text-align: right;
+  }
+
+  .print-table tbody tr {
+    break-inside: avoid;
+  }
+
+  .print-table span {
+    background: transparent !important;
+    color: inherit !important;
+    padding: 0 !important;
+    font-weight: 500 !important;
   }
 }

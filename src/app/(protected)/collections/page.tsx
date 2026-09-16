@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 import CreateShowForm from "@/components/CreateShowForm";
 import ScheduleAppointmentForm from "@/components/ScheduleAppointmentForm";
 import AppointmentStatusButtons from "@/components/AppointmentStatusButtons";
+import ShowStatusToggle from "@/components/ShowStatusToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,14 @@ export default async function CollectionsPage({
               return (
                 <div key={show.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>
-                    <div className="font-medium">{show.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{show.name}</span>
+                      {show.status === "closed" && (
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-950 dark:text-red-400">
+                          مغلق
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted">
                       {show.eventDate ? formatDate(show.eventDate) : "بدون تاريخ محدد"} ·{" "}
                       <Users2 className="inline" size={12} /> {totalNominations} ترشيح
@@ -88,6 +96,7 @@ export default async function CollectionsPage({
                         المرشّحون
                       </Link>
                     )}
+                    {isAdmin && <ShowStatusToggle showId={show.id} status={show.status} />}
                   </div>
                 </div>
               );

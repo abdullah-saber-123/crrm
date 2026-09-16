@@ -9,11 +9,13 @@ export default function NominateButton({
   partnerId,
   partnerName,
   alreadyNominatedByMe,
+  disabled,
 }: {
   showId: number;
   partnerId: number;
   partnerName: string;
   alreadyNominatedByMe: boolean;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [noteOpen, setNoteOpen] = useState(false);
@@ -56,6 +58,14 @@ export default function NominateButton({
     return (
       <span className="rounded-md bg-black/5 px-3 py-1.5 text-xs font-medium text-muted dark:bg-white/10">
         رشّحته بالفعل
+      </span>
+    );
+  }
+
+  if (disabled) {
+    return (
+      <span className="rounded-md bg-black/5 px-3 py-1.5 text-xs font-medium text-muted dark:bg-white/10">
+        العرض مغلق
       </span>
     );
   }
