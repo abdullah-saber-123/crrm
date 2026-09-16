@@ -59,12 +59,13 @@ export default function NominationActions({
       <div className="flex gap-2">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-black"
+          className="rounded-md px-3 py-1.5 text-xs font-medium text-white"
+          style={{ backgroundColor: "var(--accent)" }}
         >
           ترشيح
         </button>
         {isRegistered ? (
-          <span className="rounded-md bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+          <span className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
             مسجّل بالعرض
           </span>
         ) : (
@@ -79,7 +80,7 @@ export default function NominationActions({
       </div>
 
       {open && (
-        <form onSubmit={nominate} className="flex w-64 flex-col gap-2 rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+        <form onSubmit={nominate} className="card flex w-64 flex-col gap-2 p-3">
           <input
             value={nominatedBy}
             onChange={(e) => setNominatedBy(e.target.value)}
@@ -95,7 +96,8 @@ export default function NominationActions({
           <button
             type="submit"
             disabled={loading !== null}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+            style={{ backgroundColor: "var(--accent)" }}
           >
             {loading === "nominate" ? "جارٍ الترشيح…" : "تأكيد الترشيح"}
           </button>

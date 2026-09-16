@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -16,9 +17,10 @@ export default function LogoutButton() {
         router.refresh();
       }}
       disabled={loading}
-      className="rounded-md border border-zinc-300 px-3 py-1.5 text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
+      aria-label="تسجيل الخروج"
+      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-black/5 disabled:opacity-60 dark:hover:bg-white/10"
     >
-      تسجيل الخروج
+      <LogOut size={18} />
     </button>
   );
 }

@@ -37,7 +37,7 @@ export default function CreateShowForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700"
+        className="rounded-lg border border-card-border bg-card px-4 py-2 text-sm font-medium"
       >
         + عرض كولكشن جديد
       </button>
@@ -45,23 +45,24 @@ export default function CreateShowForm() {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-300 p-3 dark:border-zinc-700">
+    <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-3">
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-zinc-500">اسم العرض</label>
+        <label className="text-xs text-muted">اسم العرض</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder="كولكشن الخريف ٢٠٢٦" />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-zinc-500">تاريخ العرض (اختياري)</label>
+        <label className="text-xs text-muted">تاريخ العرض (اختياري)</label>
         <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="input" />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
+        className="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        style={{ backgroundColor: "var(--accent)" }}
       >
         {loading ? "جارٍ الإنشاء…" : "إنشاء"}
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="text-sm text-zinc-500">
+      <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted">
         إلغاء
       </button>
     </form>

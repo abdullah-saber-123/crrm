@@ -20,7 +20,7 @@ export default function RiskDistributionChart({
   ].filter((d) => d.value > 0);
 
   if (data.length === 0) {
-    return <p className="text-sm text-zinc-500">لا توجد بيانات كافية.</p>;
+    return <p className="text-sm text-muted">لا توجد بيانات كافية.</p>;
   }
 
   return (
@@ -31,7 +31,15 @@ export default function RiskDistributionChart({
             <Cell key={entry.name} fill={COLORS[entry.name]} />
           ))}
         </Pie>
-        <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+        <Tooltip
+          contentStyle={{
+            borderRadius: 10,
+            fontSize: 12,
+            background: "var(--card)",
+            border: "1px solid var(--card-border)",
+            color: "var(--foreground)",
+          }}
+        />
         <Legend />
       </PieChart>
     </ResponsiveContainer>

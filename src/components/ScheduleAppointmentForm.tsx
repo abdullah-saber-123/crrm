@@ -50,8 +50,8 @@ export default function ScheduleAppointmentForm({
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-      <h3 className="text-sm font-semibold">جدولة موعد تحصيل جديد</h3>
+    <form onSubmit={submit} className="card flex flex-col gap-3 p-4">
+      <h3 className="text-sm font-semibold">جدولة موعد حضور جديد</h3>
       <select value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="input">
         {partners.map((p) => (
           <option key={p.id} value={p.id}>
@@ -76,7 +76,8 @@ export default function ScheduleAppointmentForm({
       <button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
+        className="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        style={{ backgroundColor: "var(--accent)" }}
       >
         {loading ? "جارٍ الحفظ…" : "إضافة الموعد"}
       </button>

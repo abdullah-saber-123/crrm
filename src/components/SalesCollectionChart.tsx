@@ -22,11 +22,17 @@ export default function SalesCollectionChart({ data }: { data: MonthlyPoint[] })
         <YAxis tick={{ fontSize: 12 }} width={70} />
         <Tooltip
           formatter={(value) => new Intl.NumberFormat("ar-SA").format(Number(value))}
-          contentStyle={{ borderRadius: 8, fontSize: 12 }}
+          contentStyle={{
+            borderRadius: 10,
+            fontSize: 12,
+            background: "var(--card)",
+            border: "1px solid var(--card-border)",
+            color: "var(--foreground)",
+          }}
         />
         <Legend />
-        <Bar dataKey="sales" name="المبيعات" fill="#4c6ef5" radius={[4, 4, 0, 0]} />
-        <Line dataKey="collected" name="التحصيل" stroke="#37b24d" strokeWidth={2} dot={false} />
+        <Bar dataKey="sales" name="المبيعات" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+        <Line dataKey="collected" name="التحصيل" stroke="#0d9488" strokeWidth={2} dot={false} />
       </ComposedChart>
     </ResponsiveContainer>
   );

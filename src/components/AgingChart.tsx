@@ -14,7 +14,13 @@ export default function AgingChart({ data }: { data: AgingBucket[] }) {
         <YAxis tick={{ fontSize: 12 }} width={70} />
         <Tooltip
           formatter={(value) => new Intl.NumberFormat("ar-SA").format(Number(value))}
-          contentStyle={{ borderRadius: 8, fontSize: 12 }}
+          contentStyle={{
+            borderRadius: 10,
+            fontSize: 12,
+            background: "var(--card)",
+            border: "1px solid var(--card-border)",
+            color: "var(--foreground)",
+          }}
         />
         <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
           {data.map((_, i) => (

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LockKeyhole } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,13 +35,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-16">
+    <div
+      className="relative flex flex-1 items-center justify-center px-6 py-16"
+      style={{ background: "linear-gradient(160deg, var(--sidebar-bg), var(--sidebar-bg-2))" }}
+    >
+      <div className="absolute left-4 top-4">
+        <ThemeToggle className="!text-white hover:!bg-white/10" />
+      </div>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+        className="w-full max-w-sm rounded-2xl bg-card p-8 shadow-xl"
       >
+        <div
+          className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl text-white"
+          style={{ backgroundColor: "var(--accent)" }}
+        >
+          <LockKeyhole size={20} />
+        </div>
         <h1 className="mb-1 text-xl font-semibold">تسجيل الدخول</h1>
-        <p className="mb-6 text-sm text-zinc-500">نظام المطابقات والتحصيل وتحليل بيانات العملاء</p>
+        <p className="mb-6 text-sm text-muted">نظام المطابقات والتحصيل وتحليل بيانات العملاء</p>
 
         <label className="mb-1 block text-sm font-medium">اسم المستخدم</label>
         <input
@@ -66,7 +80,8 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-4 w-full rounded-lg bg-zinc-900 px-6 py-3 font-medium text-white transition disabled:opacity-60 dark:bg-white dark:text-black"
+          className="mt-4 w-full rounded-lg px-6 py-3 font-medium text-white transition disabled:opacity-60"
+          style={{ backgroundColor: "var(--accent)" }}
         >
           {loading ? "جارٍ الدخول…" : "دخول"}
         </button>

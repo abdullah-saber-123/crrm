@@ -51,7 +51,7 @@ export default function AccountReconciliationForm({
 
   if (done) {
     return (
-      <div className="rounded-lg bg-emerald-100 p-3 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+      <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
         تم تسجيل المصادقة على حساب {partnerName} حتى {asOfDate}.
       </div>
     );
