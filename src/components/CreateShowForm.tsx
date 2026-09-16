@@ -25,7 +25,7 @@ export default function CreateShowForm() {
         setOpen(false);
         setName("");
         setEventDate("");
-        router.push(`/collections?show=${show.id}`);
+        router.push(`/collections/${show.id}/customers`);
         router.refresh();
       }
     } finally {
